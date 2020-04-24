@@ -1,40 +1,49 @@
-import json
 from difflib import get_close_matches
+import mysql.connector
 
-with open('files/data.json') as dictionary:
-    content = json.load(dictionary)
-
-
-def translate(word):
-    if word.lower() in content:
-        return content[word.lower()]
-    elif word.capitalize() in content:
-        return content[word.capitalize()]
-    elif word.upper() in content:
-        return content[word.upper()]
-    else:
-        suggestion = get_close_matches(word, content.keys(), cutoff=0.8)
-        if len(suggestion) > 0:
-            while True:
-                quest = input(f'do you mean "{suggestion[0]}"? \nEnter yes or no: ')
-                if quest.lower() == 'yes':
-                    return content[suggestion[0]]
-                elif quest.lower() == 'no':
-                    return 'The meaning of word you entered is not available'
+con = mysql.connector.connect(
+    user='ardit700_student',
+    password='ardit700_student',
+    host='108.167.140.122',
+    database='ardit700_pm1database'
+)
+cursor = con.cursor()
+query = cursor.execute('SELECT Expression FROM Dictionary')
+db = cursor.fetchall()
 
 
-def run_app():
+# Get meaning of words
+def translate():
     word = input('Enter a word: ')
-    definition = translate(word)
-    if definition is not None:
-        return definition
+    cursor.execute(f'SELECT * FROM Dictionary WHERE Expression = "{word}"')
+    data = cursor.fetchall()
+
+    # checking to see is meaning for word is available
+    if data:
+        for meaning in data:
+            print(meaning[1])
     else:
-        return 'please enter a correct English word'
+        cursor.execute('SELECT Expression FROM Dictionary')
+        data = cursor.fetchall()
+        words = []
+        for wrd in data:
+            words.append(wrd[0])
+        similar = get_close_matches(word, words, cutoff=0.8)
+        if len(similar) > 0:
+            while True:
+                ans = input(f'do you mean \'{similar[0]}\', enter yes or no: ')
+                if ans.lower() == 'yes':
+                    cursor.execute(f'SELECT * FROM Dictionary WHERE Expression = "{similar[0]}"')
+                    data = cursor.fetchall()
+                    for meaning in data:
+                        print(meaning[1])
+                    break
+                elif ans.lower() == 'no':
+                    print('word is incorrect')
+                    break
+
+        else:
+            print('word is incorrect')
 
 
-data = run_app()
-if type(data) == list:
-    results = '\n'.join(data)
-    print(results)
-else:
-    print(data)
+translate()
